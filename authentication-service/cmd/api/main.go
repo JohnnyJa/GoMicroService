@@ -67,7 +67,7 @@ func connectToDB() (*sql.DB, error) {
 	for {
 		connection, err := openDB(dsn)
 		if err != nil {
-			log.Println("Could not connect to DB. Retrying in 5 seconds")
+			log.Println("Could not connect to DB. Retrying in 2 seconds")
 			counts++
 		} else {
 			log.Println("Connected to DB")
@@ -78,7 +78,6 @@ func connectToDB() (*sql.DB, error) {
 			return nil, fmt.Errorf("Connection lost after %d retries", counts)
 		}
 
-		log.Println("Retrying in 2 seconds")
 		time.Sleep(2 * time.Second)
 	}
 }
