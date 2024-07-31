@@ -106,3 +106,4 @@ authApp
 frontApp.exe
 brokerApp
 loggerApp
+mailApp
