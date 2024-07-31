@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 const webPort = "80"
@@ -16,7 +17,7 @@ type Config struct{}
 func (app *Config) sendMail(w http.ResponseWriter, msg MailPayload) {
 	jsonData, _ := json.MarshalIndent(msg, "", "\t")
 
-	mailServiceURL := "http://mail-service/senf"
+	mailServiceURL := "http://mail-service/send"
 
 	request, err := http.NewRequest("POST", mailServiceURL, bytes.NewBuffer(jsonData))
 	if err != nil {
@@ -36,7 +37,7 @@ func (app *Config) sendMail(w http.ResponseWriter, msg MailPayload) {
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusAccepted {
-		app.errorJSON(w, errors.New("error sending mail"))
+		app.errorJSON(w, errors.New("error sending mail with code"+strconv.Itoa(response.StatusCode)))
 		return
 	}
 
