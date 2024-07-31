@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
+	"log"
 	"net/http"
 )
 
@@ -30,7 +33,9 @@ func (app *Config) HandleSubmission(w http.ResponseWriter, r *http.Request) {
 	var requestPayload RequestPayload
 
 	if err := app.readJSON(w, r, &requestPayload); err != nil {
-		app.errorJSON(w, err)
+		if err := app.errorJSON(w, err); err != nil {
+			log.Printf("error writing response %v", err)
+		}
 		return
 	}
 
@@ -38,7 +43,10 @@ func (app *Config) HandleSubmission(w http.ResponseWriter, r *http.Request) {
 	case "auth":
 		app.authenticate(w, requestPayload.Auth)
 	default:
-		app.errorJSON(w, errors.New("invalid action"))
+		err := app.errorJSON(w, errors.New("invalid action"))
+		if err != nil {
+			log.Printf("error writing response %v", err)
+		}
 
 	}
 }
@@ -48,35 +56,55 @@ func (app *Config) authenticate(w http.ResponseWriter, a AuthPayload) {
 
 	request, err := http.NewRequest("POST", "http://authentication-service/authenticate", bytes.NewBuffer(jsonData))
 	if err != nil {
-		app.errorJSON(w, err)
+		err := app.errorJSON(w, err)
+		if err != nil {
+			log.Printf("error writing response %v", err)
+		}
 		return
 	}
 
 	client := &http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
-		app.errorJSON(w, err)
+		err := app.errorJSON(w, err)
+		if err != nil {
+			log.Printf("error writing response %v", err)
+		}
 		return
 	}
 
-	defer response.Body.Close()
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(response.Body)
 
 	if response.StatusCode == http.StatusUnauthorized {
-		app.errorJSON(w, errors.New("invalid credentials"), http.StatusUnauthorized)
+		err := app.errorJSON(w, errors.New("invalid credentials"), http.StatusUnauthorized)
+		if err != nil {
+			log.Printf("error writing response %v", err)
+		}
 		return
 	} else if response.StatusCode != http.StatusAccepted {
-		app.errorJSON(w, errors.New("error calling auth service"), http.StatusInternalServerError)
+		err := app.errorJSON(w, errors.New(fmt.Sprintf("error calling auth service %d", response.StatusCode)), http.StatusInternalServerError)
+		if err != nil {
+			log.Printf("error writing response %v", err)
+		}
 		return
 	}
 
 	var authResponse jsonResponse
 	if err := json.NewDecoder(response.Body).Decode(&authResponse); err != nil {
-		app.errorJSON(w, err)
+		err := app.errorJSON(w, err)
+		if err != nil {
+			log.Printf("error writing response %v", err)
+		}
 		return
 	}
 
 	if authResponse.Error {
-		app.errorJSON(w, err, http.StatusUnauthorized)
+		err := app.errorJSON(w, err, http.StatusUnauthorized)
+		if err != nil {
+			log.Printf("error writing response %v", err)
+		}
 		return
 	}
 
@@ -86,5 +114,8 @@ func (app *Config) authenticate(w http.ResponseWriter, a AuthPayload) {
 		Data:    authResponse.Data,
 	}
 
-	app.writeJSON(w, http.StatusAccepted, payload)
+	err = app.writeJSON(w, http.StatusAccepted, payload)
+	if err != nil {
+		log.Printf("error writing response %v", err)
+	}
 }
