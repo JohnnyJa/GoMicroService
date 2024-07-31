@@ -105,3 +105,4 @@ project/db-data/*
 authApp
 frontApp.exe
 brokerApp
+loggerApp
